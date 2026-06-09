@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Agentic Optimization Loop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        /* Smooth glowing animation to match Gemini's UI */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 15px rgba(155, 81, 224, 0.4)); }
+            50% { opacity: 0.9; filter: drop-shadow(0 0 25px rgba(66, 133, 244, 0.7)); }
+        }
+        .gemini-glow { animation: pulse-glow 4s infinite ease-in-out; }
+    </style>
+</head>
+<body class="bg-[#131314] text-[#e3e3e3] h-screen flex flex-col antialiased selection:bg-[#4285f4]/30">
+
+    <header class="h-14 border-b border-[#282a2c] bg-[#1e1e20] px-6 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-5 h-5 rounded-full bg-gradient-to-tr from-[#4285f4] via-[#9b51e0] to-[#ea4335] gemini-glow"></div>
+            <span class="font-semibold text-sm tracking-wide">SUPER YOOPER AUTO-RESEARCHER</span>
+        </div>
+        <div class="flex items-center gap-4 text-xs text-[#aaaaaa]">
+            <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <span>GCP Instance: e2-micro (Active)</span>
+            </div>
+            <span class="border-l border-[#282a2c] h-4"></span>
+            <span>Uptime: 14d 02h</span>
+        </div>
+    </header>
+
+    <main class="flex flex-1 overflow-hidden p-6 gap-6">
+        
+        <section class="w-80 flex flex-col gap-4 shrink-0">
+            <div class="bg-[#1e1e20] p-5 rounded-xl border border-[#2a2a2c]">
+                <h2 class="text-xs font-semibold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#4285f4] to-[#9b51e0] uppercase">
+                    Loop Status
+                </h2>
+                <div class="mt-4 space-y-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-[#aaaaaa]">Current Run</span>
+                        <span id="current-run" class="mono font-semibold">#0</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-[#aaaaaa]">Active Model</span>
+                        <span id="active-model" class="text-[#4285f4] font-medium">Connecting...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-[#aaaaaa]">Target File</span>
+                        <span class="mono text-xs bg-[#131314] px-1.5 py-0.5 rounded border border-[#282a2c]">software_under_test.py</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-[#1e1e20] p-5 rounded-xl border border-[#2a2a2c] flex-1 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xs font-semibold tracking-wider text-[#aaaaaa] uppercase">Performance Metrics</h2>
+                    <div class="mt-6 text-center">
+                        <div id="latency-delta" class="text-5xl font-light tracking-tight text-green-400 font-sans">0.0%</div>
+                        <p class="text-xs text-[#aaaaaa] mt-2">Execution Latency Reduction</p>
+                    </div>
+                </div>
+                <div class="border-t border-[#282a2c] pt-4 space-y-2 text-xs text-[#aaaaaa]">
+                    <div class="flex justify-between">
+                        <span>Baseline Latency:</span>
+                        <span id="baseline-latency" class="mono text-[#e3e3e3]">0ms</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Current Best:</span>
+                        <span id="current-best" class="mono text-green-400 font-semibold">0ms</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="flex-1 bg-[#000000] rounded-xl border border-[#1e1e20] flex flex-col overflow-hidden shadow-2xl">
+            <div class="bg-[#131314] h-10 border-b border-[#1e1e20] px-4 flex items-center justify-between shrink-0">
+                <span class="mono text-xs text-[#aaaaaa]">bash — tmux attach -t ai-agent</span>
+                <div class="flex gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#2a2a2c]"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#2a2a2c]"></span>
+                    <span class="w-2.5 h-2.5 rounded-full bg-[#2a2a2c]"></span>
+                </div>
+            </div>
+            
+            <div id="terminal-logs" class="flex-1 p-6 overflow-y-auto mono text-sm space-y-3 leading-relaxed scrollbar-thin scrollbar-thumb-[#2a2a2c]">
+                <div class="text-[#aaaaaa]">Connecting to GitHub state pipeline...</div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Configuration: Replace these with your real GitHub details
+        const GITHUB_USERNAME = "your-username";
+        const REPO_NAME = "your-loop-repo";
+        const BRANCH = "main"; 
+        
+        // The URL to fetch the raw text content of status.json directly from GitHub
+        const url = `https://raw.githubusercontent.com/${GITHUB_USERNAME}/${REPO_NAME}/${BRANCH}/status.json`;
+
+        async function updateDashboard() {
+            try {
+                // Fetch the tiny JSON payload from GitHub
+                const response = await fetch(url + '?nocache=' + new Date().getTime()); // Prevent browser caching
+                if (!response.ok) throw new Error("Network response was not ok");
+                
+                const data = await response.json();
+
+                // 1. Update the metric panels
+                document.getElementById('current-run').innerText = `#${data.current_run}`;
+                document.getElementById('active-model').innerText = data.active_model;
+                document.getElementById('latency-delta').innerText = `${data.latency_delta}%`;
+                document.getElementById('current-best').innerText = `${data.current_best}ms`;
+                document.getElementById('baseline-latency').innerText = `${data.baseline_latency}ms`;
+
+                // 2. Clear and stream the new terminal logs
+                const logsContainer = document.getElementById('terminal-logs');
+                logsContainer.innerHTML = ''; // Clear old logs
+                
+                data.logs.forEach(log => {
+                    const logLine = document.createElement('div');
+                    // Style colors dynamically based on text content
+                    if (log.includes('SUCCESS')) logLine.className = 'text-green-400 font-medium';
+                    else if (log.includes('Git')) logLine.className = 'text-yellow-500 font-semibold';
+                    else if (log.includes('Gemini')) logLine.className = 'text-[#4285f4] font-medium';
+                    else if (log.includes('purged')) logLine.className = 'text-purple-400';
+                    else logLine.className = 'text-[#aaaaaa]';
+                    
+                    logLine.innerText = log;
+                    logsContainer.appendChild(logLine);
+                });
+
+                // Auto-scroll terminal to the bottom on fresh writes
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+
+            } catch (error) {
+                console.error("Error updating dashboard:", error);
+                // Graceful failure message if file isn't created or uploaded on main yet
+                document.getElementById('active-model').innerText = "Offline (Awaiting data...)";
+            }
+        }
+
+        // Poll GitHub for updates every 10 seconds
+        setInterval(updateDashboard, 10000);
+        // Run immediately on page load
+        updateDashboard();
+    </script>
+</body>
+</html>
